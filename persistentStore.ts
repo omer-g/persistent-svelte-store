@@ -30,7 +30,7 @@ export const persistentWritable = <T>(storeKey: string, initialValue: T) => {
     subscription(storeValue);
     subscriptions = [...subscriptions, subscription];
     const unsubscribe = () => {
-      subscriptions.filter(s => s != subscription);
+      subscriptions = subscriptions.filter(s => s != subscription);
     }
     return unsubscribe;
   }
