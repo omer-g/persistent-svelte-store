@@ -20,3 +20,6 @@ Use like any writable store
 
 ## Sources
 To learn more about Svelte stores see the [Svelte Docs](https://svelte.dev/docs).
+
+## Usage
+Available for use freely under the [Unlicense License](https://unlicense.org/).
