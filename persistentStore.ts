@@ -1,5 +1,11 @@
 /** -------------------------- persistentStore.ts -------------------------- */
 
+export type PersistentWritable<T> = {
+  subscribe: (subscription: (value: T) => void) => () => void;
+  set: (value: T) => void;
+  update: (update_func: (curr: T) => T) => void;
+};
+
 /** A generic persistent store according to the Svelte store contract
  * 
  *  @example
@@ -12,11 +18,12 @@
  *  @template T - Should be a type JSON.stringify can process
  *  @param {string} storeKey - A key in localStorage for the store
  *  @param {T} initialValue - Initial value of store
+ *  @returns {PersistentWritable<T>} - A persistent writable store
  */
-export const persistentWritable = <T>(storeKey: string, initialValue: T) => {
+export const persistentWritable = <T>(storeKey: string, initialValue: T): PersistentWritable<T> => {
   let subscriptions: ((value: T) => void)[] = [];
   let storeValue: T;
-  
+
   let currentStoreString = localStorage.getItem(storeKey);
   if (currentStoreString === null || currentStoreString === undefined) {
     storeValue = initialValue;
