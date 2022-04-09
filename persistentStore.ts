@@ -16,7 +16,8 @@ export type PersistentWritable<T> = {
  *      console.log($store.id);
  * 
  *  @template T - Should be a type JSON.stringify can process
- *  @param {string} storeKey - A key in localStorage for the store
+ *  @param {string} storeKey - A unique key in localStorage for the store.
+ *                             This will also be the channel name in Broadcast API.
  *  @param {T} initialValue - Initial value of store
  *  @returns {PersistentWritable<T>} - A persistent writable store
  */
@@ -24,20 +25,69 @@ export const persistentWritable = <T>(storeKey: string, initialValue: T): Persis
   let subscriptions: ((value: T) => void)[] = [];
   let storeValue: T;
 
-  let currentStoreString = localStorage.getItem(storeKey);
+  const safeParse = (jsonString: string) => {
+    try {
+      return JSON.parse(jsonString);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.log(error)
+      }
+    }
+  }
+
+  const safeSetItem = (key: string, value: T) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log(error);
+      }
+    }
+  }
+
+  const safeGetItem = (key: string) => {
+    try {
+      return localStorage.getItem(key);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log(error);
+      }
+    }
+  }
+
+  let currentStoreString = safeGetItem(storeKey);
   if (currentStoreString === null || currentStoreString === undefined) {
     storeValue = initialValue;
-    localStorage.setItem(storeKey, JSON.stringify(storeValue));
+    safeSetItem(storeKey, storeValue);
   } else {
-    storeValue = JSON.parse(localStorage.getItem(storeKey));
+    storeValue = safeParse(safeGetItem(storeKey));
+  }
+
+  let storeChannel = new BroadcastChannel(storeKey);
+  storeChannel.onmessage = event => {
+    storeValue = safeParse(safeGetItem(storeKey));
+    if (event.data === storeKey) {
+      subscriptions.forEach(subscriptions => subscriptions(storeValue));
+    }
   }
 
   // Subscribes function and returns an unsubscribe function
   const subscribe = (subscription: (value: T) => void) => {
     subscription(storeValue);
     subscriptions = [...subscriptions, subscription];
+
+    // If subscribers go from 0 to 1 (after dropping to 0 before) recreate channel
+    if (subscription.length === 1 && storeChannel === null) {
+      storeChannel = new BroadcastChannel(storeKey);
+    }
     const unsubscribe = () => {
       subscriptions = subscriptions.filter(s => s != subscription);
+      
+      // If subsccribers go from 1 to 0 close channel
+      if (storeChannel && subscription.length === 0) {
+        storeChannel.close();
+        storeChannel = null;
+      }
     }
     return unsubscribe;
   }
@@ -45,8 +95,12 @@ export const persistentWritable = <T>(storeKey: string, initialValue: T): Persis
   // Sets stringified value in local storage and calls subscriptions
   const set = (value: T) => {
     storeValue = value;
-    localStorage.setItem(storeKey, JSON.stringify(value));
+    safeSetItem(storeKey, value);
     subscriptions.forEach(subscription => subscription(storeValue));
+
+    if (storeChannel) {
+      storeChannel.postMessage(storeKey);
+    }
   }
 
   // Updates store value according to input function

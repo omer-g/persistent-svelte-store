@@ -1,7 +1,7 @@
 # persistent-svelte-store
 
 ## Description
-A generic persistent writable store, built from scratch in TypeScript according to the Svelte store contract. Store value is stored in `localStorage` as a JSON string, but this is transparent to user.
+A generic persistent writable store, built from scratch in TypeScript according to the Svelte store contract. Store value is stored in `localStorage` as a JSON string, but this is transparent to user. The store is reactive across tabs or windows using the Broadcast Channel API.
 
 ## Example
 Create a store and supply a type
